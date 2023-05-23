@@ -15,10 +15,11 @@ def generate_composite_signal(amplitude1, frequency1, phase1, amplitude2, freque
     composite_signal = signal1 + signal2
     return t, composite_signal
 
-def generate_custom_signal(amplitude, frequency, phase, duration, sampling_rate, t1, t2, n):
-    t = np.linspace(0, duration, int(duration * sampling_rate), endpoint=False)
-    signal = amplitude * (((t/t1)**n)/(1+(t/t1)**n)) * np.exp(-(t/t2))* np.cos(2 * np.pi * frequency * t + phase)
-    return t, signal
+# Nie używana funkcja, aby stworzyć pojedynczy sygnał ustawiamy amplitudę drugiego sygnału na 0
+# def generate_custom_signal(amplitude, frequency, phase, duration, sampling_rate, t1, t2, n):
+#     t = np.linspace(0, duration, int(duration * sampling_rate), endpoint=False)
+#     signal = amplitude * (((t/t1)**n)/(1+(t/t1)**n)) * np.exp(-(t/t2))* np.cos(2 * np.pi * frequency * t + phase)
+#     return t, signal
 
 def generate_composite_custom_signal(amplitude1, frequency1, phase1, amplitude2, frequency2, phase2, duration, sampling_rate, t1, t2, n):
     t = np.linspace(0, duration, int(duration * sampling_rate), endpoint=False)
@@ -51,6 +52,7 @@ def plot_signal_and_spectrum(t, signal, frequencies, spectrum):
 
 def generate_signal():
     global canvas
+    global toolbar
 
     amplitude = float(amp_entry.get())
     frequency = float(freq_entry.get())
@@ -62,17 +64,26 @@ def generate_signal():
 
     if signal_type == "Single":
         t, signal = generate_sinusoidal_signal(amplitude, frequency, phase, duration, sampling_rate)
-    else:
+    elif signal_type == "Composite":
         amplitude2 = float(amp2_entry.get())
         frequency2 = float(freq2_entry.get())
         phase2 = float(phase2_entry.get())
         t, signal = generate_composite_signal(amplitude, frequency, phase, amplitude2, frequency2, phase2, duration, sampling_rate)
+    else:
+        amplitude2 = float(amp2_entry.get())
+        frequency2 = float(freq2_entry.get())
+        phase2 = float(phase2_entry.get())
+        t1 = float(t1_entry.get())
+        t2 = float(t2_entry.get())
+        n = float(n_entry.get())
+        t, signal = generate_composite_custom_signal(amplitude, frequency, phase, amplitude2, frequency2, phase2, duration, sampling_rate, t1, t2, n)
 
     frequencies, spectrum = perform_fourier_transform(signal, sampling_rate)
 
     if canvas is not None:
         # Jeśli istnieje istniejący wykres, usuń go
         canvas.get_tk_widget().pack_forget()
+        toolbar.pack_forget()
 
     fig = plot_signal_and_spectrum(t, signal, frequencies, spectrum)
 
@@ -92,15 +103,32 @@ def generate_signal():
     toolbar.update()
     canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
 
+def toggle_custom_signal_fields():
+    if signal_type_var.get() == "Custom":
+        t1_label.config(state=tk.NORMAL)
+        t1_entry.config(state=tk.NORMAL)
+        t2_label.config(state=tk.NORMAL)
+        t2_entry.config(state=tk.NORMAL)
+        n_label.config(state=tk.NORMAL)
+        n_entry.config(state=tk.NORMAL)
+    else:
+        t1_label.config(state=tk.DISABLED)
+        t1_entry.config(state=tk.DISABLED)
+        t2_label.config(state=tk.DISABLED)
+        t2_entry.config(state=tk.DISABLED)
+        n_label.config(state=tk.DISABLED)
+        n_entry.config(state=tk.DISABLED)
+
 # Tworzenie interfejsu użytkownika
 root = tk.Tk()
-root.title("Aplikacja prezentująca sygnały i ich widma")
+root.title("Generator sygnałów")
 
 # Ramka dla wprowadzania parametrów sygnału
 parameters_frame = tk.Frame(root)
 parameters_frame.pack(pady=10)
 
 canvas = None
+toolbar = None
 
 amp_label = tk.Label(parameters_frame, text="Amplituda:")
 amp_label.grid(row=0, column=0, padx=5, pady=5)
@@ -156,17 +184,40 @@ signal_type_label.grid(row=5, column=0, padx=5, pady=5)
 signal_type_var = tk.StringVar()
 signal_type_var.set("Single")
 
-single_signal_radio = tk.Radiobutton(parameters_frame, text="Jedno", variable=signal_type_var, value="Single")
+single_signal_radio = tk.Radiobutton(parameters_frame, text="Jedno", variable=signal_type_var, value="Single", command=toggle_custom_signal_fields)
 single_signal_radio.grid(row=5, column=1, padx=5, pady=5)
 
-composite_signal_radio = tk.Radiobutton(parameters_frame, text="Złożone", variable=signal_type_var, value="Composite")
+composite_signal_radio = tk.Radiobutton(parameters_frame, text="Złożone", variable=signal_type_var, value="Composite", command=toggle_custom_signal_fields)
 composite_signal_radio.grid(row=5, column=2, padx=5, pady=5)
 
+custom_signal_radio = tk.Radiobutton(parameters_frame, text="Gasnące", variable=signal_type_var, value="Custom", command=toggle_custom_signal_fields)
+custom_signal_radio.grid(row=5, column=3, padx=5, pady=5)
+
+t1_label = tk.Label(parameters_frame, text="T1:")
+t1_label.grid(row=6, column=0, padx=5, pady=5)
+t1_entry = tk.Entry(parameters_frame, state=tk.DISABLED)
+t1_entry.insert(0, "0.5")
+t1_entry.grid(row=6, column=1, padx=5, pady=5)
+
+t2_label = tk.Label(parameters_frame, text="T2:")
+t2_label.grid(row=6, column=2, padx=5, pady=5)
+t2_entry = tk.Entry(parameters_frame, state=tk.DISABLED)
+t2_entry.insert(0, "0.2")
+t2_entry.grid(row=6, column=3, padx=5, pady=5)
+
+n_label = tk.Label(parameters_frame, text="N:")
+n_label.grid(row=7, column=0, padx=5, pady=5)
+n_entry = tk.Entry(parameters_frame, state=tk.DISABLED)
+n_entry.insert(0, "4")
+n_entry.grid(row=7, column=1, padx=5, pady=5)
+
+# Przycisk generowania sygnału
 generate_button = tk.Button(root, text="Generuj sygnał", command=generate_signal)
 generate_button.pack(pady=10)
 
 # Ramka dla wykresu
 plot_frame = tk.Frame(root)
-plot_frame.pack()
+plot_frame.pack(padx=10, pady=10)
 
+# Uruchomienie aplikacji
 root.mainloop()
